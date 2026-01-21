@@ -1,0 +1,185 @@
+-- =====================================
+-- DATABASE
+-- =====================================
+DROP DATABASE IF EXISTS exam_system;
+CREATE DATABASE exam_system
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_general_ci;
+USE exam_system;
+
+-- =====================================
+-- USERS (ADMIN · GURU · SISWA)
+-- =====================================
+CREATE TABLE users (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  username VARCHAR(50) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  role ENUM('admin','guru','siswa') NOT NULL,
+  nama VARCHAR(100) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  kelas VARCHAR(50) DEFAULT NULL,
+  approved TINYINT(1) NOT NULL DEFAULT 0,
+  email VARCHAR(100) DEFAULT NULL,
+  nis VARCHAR(20) UNIQUE DEFAULT NULL,
+  jurusan VARCHAR(100) DEFAULT NULL,
+  jk ENUM('L','P') DEFAULT NULL,
+  status VARCHAR(50) DEFAULT NULL,
+  deleted_at DATETIME DEFAULT NULL
+);
+
+-- =====================================
+-- MAPEL
+-- =====================================
+CREATE TABLE mapel (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nama_mapel VARCHAR(100),
+  kkm INT DEFAULT 75
+);
+
+-- =====================================
+-- MAPEL GURU
+-- =====================================
+CREATE TABLE mapel_guru (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  mapel_id INT NOT NULL,
+  guru_id INT NOT NULL,
+  FOREIGN KEY (mapel_id) REFERENCES mapel(id) ON DELETE CASCADE,
+  FOREIGN KEY (guru_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- =====================================
+-- SOAL
+-- =====================================
+CREATE TABLE soal (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  ujian_id INT DEFAULT NULL,
+  soal TEXT NOT NULL,
+  mapel_id INT NOT NULL,
+  kategori VARCHAR(50) NOT NULL DEFAULT 'Umum',
+  guru_id INT NOT NULL,
+  opsi_a VARCHAR(255),
+  opsi_b VARCHAR(255),
+  opsi_c VARCHAR(255),
+  opsi_d VARCHAR(255),
+  opsi_e VARCHAR(255),
+  jawaban_benar VARCHAR(10),
+  tipe VARCHAR(20) NOT NULL DEFAULT 'pilihan_ganda',
+  file_word VARCHAR(255),
+  jawaban_mc TEXT,
+  FOREIGN KEY (mapel_id) REFERENCES mapel(id),
+  FOREIGN KEY (guru_id) REFERENCES users(id)
+);
+
+-- =====================================
+-- UJIAN
+-- =====================================
+CREATE TABLE ujian (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nama VARCHAR(100) NOT NULL,
+  mapel_id INT NOT NULL,
+  guru_id INT DEFAULT NULL,
+  durasi INT NOT NULL,
+  aktif TINYINT(1) NOT NULL DEFAULT 1,
+  jumlah_soal INT DEFAULT 10,
+  kategori_filter VARCHAR(100),
+  FOREIGN KEY (mapel_id) REFERENCES mapel(id),
+  FOREIGN KEY (guru_id) REFERENCES users(id)
+);
+
+-- =====================================
+-- UJIAN SOAL
+-- =====================================
+CREATE TABLE ujian_soal (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  ujian_id INT NOT NULL,
+  soal_id INT DEFAULT NULL,
+  soal_text TEXT,
+  opsi_a TEXT,
+  opsi_b TEXT,
+  opsi_c TEXT,
+  opsi_d TEXT,
+  opsi_e TEXT,
+  jawaban_benar VARCHAR(5),
+  tipe ENUM('pg','bs') NOT NULL DEFAULT 'pg',
+  sumber ENUM('bank','manual','import','bs') NOT NULL,
+  FOREIGN KEY (ujian_id) REFERENCES ujian(id) ON DELETE CASCADE,
+  FOREIGN KEY (soal_id) REFERENCES soal(id) ON DELETE SET NULL
+);
+
+-- =====================================
+-- HASIL UJIAN
+-- =====================================
+CREATE TABLE hasil_ujian (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  siswa_id INT NOT NULL,
+  ujian_id INT NOT NULL,
+  skor FLOAT NOT NULL,
+  tanggal DATETIME DEFAULT CURRENT_TIMESTAMP,
+  status ENUM('ongoing','submitted','auto_submitted') NOT NULL DEFAULT 'ongoing',
+  selesai_pada DATETIME DEFAULT NULL,
+  FOREIGN KEY (siswa_id) REFERENCES users(id),
+  FOREIGN KEY (ujian_id) REFERENCES ujian(id)
+);
+
+-- =====================================
+-- JAWABAN SISWA (FINAL)
+-- =====================================
+CREATE TABLE jawaban_siswa (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  hasil_ujian_id INT NOT NULL,
+  soal_id INT NOT NULL,
+  jawaban VARCHAR(10),
+  FOREIGN KEY (hasil_ujian_id) REFERENCES hasil_ujian(id) ON DELETE CASCADE,
+  FOREIGN KEY (soal_id) REFERENCES soal(id)
+);
+
+-- =====================================
+-- JAWABAN TMP (AUTO SAVE)
+-- =====================================
+CREATE TABLE jawaban_tmp (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  siswa_id INT NOT NULL,
+  ujian_id INT NOT NULL,
+  soal_id INT NOT NULL,
+  jawaban CHAR(1) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- =====================================
+-- LOG SISWA
+-- =====================================
+CREATE TABLE log_siswa (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  siswa_id INT NOT NULL,
+  admin_id INT NOT NULL,
+  aksi ENUM('hapus','restore','hapus_permanen') NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =====================================
+-- PASSWORD SECURITY
+-- =====================================
+CREATE TABLE password_change_attempt (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  attempt_time DATETIME NOT NULL,
+  ip VARCHAR(45)
+);
+
+CREATE TABLE password_changes_log (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  changed_at DATETIME NOT NULL,
+  ip VARCHAR(45),
+  user_agent TEXT,
+  note VARCHAR(255)
+);
+
+-- =====================================
+-- INDEX OPTIMIZATION
+-- =====================================
+CREATE INDEX idx_users_role ON users(role);
+CREATE INDEX idx_users_nis ON users(nis);
+CREATE INDEX idx_hasil_siswa ON hasil_ujian(siswa_id);
+CREATE INDEX idx_tmp_siswa_ujian ON jawaban_tmp(siswa_id, ujian_id);

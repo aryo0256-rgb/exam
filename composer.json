@@ -1,0 +1,18 @@
+{
+    "name": "my_pc/exam_system",
+    "description": "Exam System Project",
+    "type": "project",
+    "require": {
+        "phpoffice/phpword": "1.0",
+        "phpoffice/phpspreadsheet": "1.26.0",
+        "shuchkin/simplexlsx": "^1.1"
+    },
+    "config": {
+        "allow-plugins": {
+            "*": true
+        },
+        "audit": {
+            "block-insecure": false
+        }
+    }
+}
